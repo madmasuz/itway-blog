@@ -9,6 +9,7 @@ import sitemap from "@astrojs/sitemap";
 import tailwind from "@astrojs/tailwind";
 import svelte from "@astrojs/svelte";
 import { pagefind } from "vite-plugin-pagefind";
+import type { PluginOption } from "vite";
 
 import { BASE, SITE } from "./src/config.ts";
 
@@ -23,6 +24,12 @@ import LinkCardEmbed from "./src/embeds/link-card/embed";
 import YoutubeEmbed from "./src/embeds/youtube/embed";
 import ExcalidrawEmbed from "./src/embeds/excalidraw/embed";
 
+const isProd = process.env.NODE_ENV === "production";
+
+const vitePlugins: PluginOption[] = isProd
+  ? (pagefind() as unknown as PluginOption[])
+  : [];
+
 // https://astro.build/config
 export default defineConfig({
   vite: {
@@ -35,15 +42,19 @@ export default defineConfig({
         $content: resolve("./src/content"),
       },
     },
-    ssr: {
-      noExternal: [BASE + "/pagefind/pagefind.js"],
-    },
-    plugins: [pagefind()],
-    build: {
-      rollupOptions: {
-        external: [BASE + "/pagefind/pagefind.js"],
-      },
-    },
+    ssr: isProd
+      ? {
+          noExternal: [BASE + "/pagefind/pagefind.js"],
+        }
+      : undefined,
+    plugins: vitePlugins,
+    build: isProd
+      ? {
+          rollupOptions: {
+            external: [BASE + "/pagefind/pagefind.js"],
+          },
+        }
+      : undefined,
   },
 
   integrations: [
@@ -58,10 +69,6 @@ export default defineConfig({
 
   markdown: {
     shikiConfig: {
-      // Choose from Shiki's built-in themes (or add your own)
-      // https://shiki.style/themes
-      // Alternatively, provide multiple themes
-      // See note below for using dual light/dark themes
       themes: {
         light: "github-light",
         dark: "github-dark",
@@ -73,7 +80,6 @@ export default defineConfig({
       ],
       wrap: true,
     },
-
     remarkPlugins: [remarkMath],
     rehypePlugins: [rehypeMathjax],
   },
