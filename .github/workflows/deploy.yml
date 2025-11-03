@@ -38,7 +38,7 @@ jobs:
           ssh-keyscan -p "${SSH_PORT:-22}" "$SSH_HOST" >> ~/.ssh/known_hosts
           rsync -azr --delete -e "ssh -p ${SSH_PORT:-22}" ./dist/ "$SSH_USER@$SSH_HOST:~/deploy_tmp/"
           ssh -p "${SSH_PORT:-22}" "$SSH_USER@$SSH_HOST" << 'EOF'
-            sudo rsync -azr --delete ~/deploy_tmp/ /var/www/test/
-            sudo chown -R www-data:www-data /var/www/test/
+            sudo rsync -azr --delete ~/deploy_tmp/ /var/www/itway-blog/
+            sudo chown -R www-data:www-data /var/www/itway-blog/
             rm -rf ~/deploy_tmp/
           EOF
