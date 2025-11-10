@@ -1,0 +1,546 @@
+---
+title: "Как создать свой блог"
+description: "Пошаговое описание процесса создания и настройки блога"
+pubDate: "Nov 10 2025"
+published: true
+tags: ["setup", "markdown"]
+---
+
+# Blog
+
+Решил тут наконец создать блог, чтобы было куда выкладывать свои проекты, полезные команды и приемы, 
+чтобы самому потом вспомнить что делал, да и может кому еще полезно будет, плюс он всегда будет под рукой.
+
+Как я себе это представлял, ща, найду за пару минут самую популярную платформу, шаблон и забабахаю за пару часов... 
+Но это все было в теории. На практике же пришлось повозится и с движком для блога, и с шаблоном для него, 
+и прикручиванием комментариев и даже поругаться на GitHub. 
+В общем приключение на пару часов превратилось в НЕувлекательное путешествие на пару недель в компании с google, разными ИИ и моими хотелками.
+
+Скажу сразу, я ни разу не разработчик, поэтому часто обращаюсь к ИИшкам, верю как наивный почти всему что они генерят, пробую всю эту дичь
+и только через такой тернистый путь прихожу к решению, которое меня устраивает.
+
+Поэтому подумал что полученный результат может быть полезным материалом для того, кто тоже хочет ~~пострадать такой же фигней~~ создать свой блог.
+Чтиво не совсем для новичков, а для тех, кто уже уверенно вкатился в IT, и пока не думает из него выкатываться.
+
+## Введение
+
+Порыскал я по тырнетам и остановился на проекте [Astro](https://astro.build/) c темплейтом от [Florian](https://github.com/flo-bit/blog-template).
+Мне понравился его минималистичный дизайн, скорость работы, переключение темной и светлой темы (о да, здесь это уже есть по дефолту, 
+недолюбливаю страницу google translate из-за отсутствия этой архинужной фичи), адаптивный дизайн и много чего еще. 
+Почитайте в первоисточниках более подробно, если интересно.
+
+## Подготовка
+
+У меня уже есть доменное имя `blog.itway.site`, сервер с белым IP и запись у регистратора типа А, которая указывает на IP сервера.
+Проверить что имя резолвится можно так:
+```bash
+dig +short blog.itway.site A
+```
+
+Я создал виртуалку c minimal Ubuntu 24.04 LTS, пользователя из под которого буду запускать npm и добавил его в группу sudoers:
+```bash
+useradd -s /bin/bash -m myblog
+usermod -aG sudo myblog
+```
+```bash
+visudo:
+  myblog ALL=(ALL) ALL:ALL
+```
+
+Захожу под новым пользователем и ставлю curl, fail2ban, vim или nano по вкусу:
+```bash
+sudo apt install -y curl fail2ban vim
+```
+
+
+## Установка npm
+
+Для блога нужна стабильная версия npm 22, ставлю ее.
+По совету ChatGPT ставил следующим способом (он сказал что он самый удобный):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
+source ~/.bashrc
+nvm install 22
+nvm use 22
+node -v
+npm -v
+```
+
+## Шаблон блога
+
+Так, npm есть, теперь скачиваем файлы шаблона блога без истории git:
+```bash
+npm i -g degit
+mkdir itway-blog && cd itway-blog
+npx degit flo-bit/blog-template .
+```
+
+Создаю в GitHub публичный репо "itway-blog".
+После этого инициализирую git и заливаю код в новый репо:
+```bash
+git init
+git branch -m main (так как в github дефолтная ветка main, а не master)
+git remote add origin git@github.com:madmasuz/itway-blog.git
+git add .
+git commit -m "Init from flo-bit/blog-template"
+git push -u origin main
+```
+
+В `src/config.ts` задаю:
+```
+export const SITE = "https://blog.itway.site"; // URL
+export const BASE = "/"; // корень домена
+```
+
+Если мы сейчас попытаемя запустить сайт в dev, то у нас ничего не выйдет:
+
+```bash
+$ npm run dev -- --host 0.0.0.0 --port 3000
+
+> itway-blog@0.0.5 dev
+> astro dev --host 0.0.0.0 --port 3000
+
+[vite-plugin-pagefind] Building with "npm run build"...
+Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Pagefind module not found, will retry after build
+...
+Pagefind module not found, will retry after build
+[vite-plugin-pagefind] Successfully build with "npm run build."
+[vite-plugin-pagefind] Copying bundle to "public"...
+ENOENT: no such file or directory, lstat '/home/astro/dev-blog/itway-blog/build/pagefind'
+  Location:
+    /home/astro/dev-blog/itway-blog/node_modules/vite-plugin-pagefind/dist/index.mjs:77:9
+  Stack trace:
+    at cpSyncFn (node:internal/fs/cp/cp-sync:56:13)
+    at copyBundle (file:///home/astro/dev-blog/itway-blog/node_modules/vite-plugin-pagefind/dist/index.mjs:77:9)
+    at file:///home/astro/dev-blog/itway-blog/node_modules/vite/dist/node/chunks/dep-B0fRCRkQ.js:54309:67
+    at resolveConfig (file:///home/astro/dev-blog/itway-blog/node_modules/vite/dist/node/chunks/dep-B0fRCRkQ.js:54309:53)
+    at async createContainer (file:///home/astro/dev-blog/itway-blog/node_modules/astro/dist/core/dev/container.js:60:22)
+```
+
+Какая то проблема с pagefind, чтобы ее исправить меняем astro.config.ts, теперь он имеет следующий вид:
+
+```bash
+// @ts-check
+import { defineConfig } from "astro/config";
+import { resolve } from "path";
+import remarkMath from "remark-math";
+import rehypeMathjax from "rehype-mathjax";
+
+import mdx from "@astrojs/mdx";
+import sitemap from "@astrojs/sitemap";
+import tailwind from "@astrojs/tailwind";
+import svelte from "@astrojs/svelte";
+import { pagefind } from "vite-plugin-pagefind";
+import type { PluginOption } from "vite";
+
+import { BASE, SITE } from "./src/config.ts";
+
+import customEmbeds from "astro-custom-embeds";
+
+import {
+  transformerMetaHighlight,
+  transformerNotationHighlight,
+} from "@shikijs/transformers";
+
+import LinkCardEmbed from "./src/embeds/link-card/embed";
+import YoutubeEmbed from "./src/embeds/youtube/embed";
+import ExcalidrawEmbed from "./src/embeds/excalidraw/embed";
+
+const isProd = process.env.NODE_ENV === "production";
+
+const vitePlugins: PluginOption[] = isProd
+  ? (pagefind() as unknown as PluginOption[])
+  : [];
+
+// https://astro.build/config
+export default defineConfig({
+  vite: {
+    resolve: {
+      alias: {
+        $components: resolve("./src/components"),
+        $layouts: resolve("./src/layouts"),
+        $pages: resolve("./src/pages"),
+        $assets: resolve("./src/assets"),
+        $content: resolve("./src/content"),
+      },
+    },
+    ssr: isProd
+      ? {
+          noExternal: [BASE + "/pagefind/pagefind.js"],
+        }
+      : undefined,
+    plugins: vitePlugins,
+    build: isProd
+      ? {
+          rollupOptions: {
+            external: [BASE + "/pagefind/pagefind.js"],
+          },
+        }
+      : undefined,
+  },
+
+  integrations: [
+    customEmbeds({
+      embeds: [ExcalidrawEmbed, YoutubeEmbed, LinkCardEmbed],
+    }),
+    mdx(),
+    sitemap(),
+    tailwind(),
+    svelte(),
+  ],
+
+  markdown: {
+    shikiConfig: {
+      themes: {
+        light: "github-light",
+        dark: "github-dark",
+      },
+      defaultColor: false,
+      transformers: [
+        transformerMetaHighlight(),
+        transformerNotationHighlight(),
+      ],
+      wrap: true,
+    },
+    remarkPlugins: [remarkMath],
+    rehypePlugins: [rehypeMathjax],
+  },
+
+  prefetch: {
+    prefetchAll: true,
+  },
+  site: SITE,
+  base: BASE,
+  output: "static",
+});
+```
+
+Запускаю снова...
+
+```
+$ npm run dev -- --host 0.0.0.0 --port 3000
+
+> itway-blog@0.0.5 dev
+> astro dev --host 0.0.0.0 --port 3000
+
+19:08:22 [types] Generated 1ms
+
+ update  ▶ New version of Astro available: 5.14.1
+  Run npx @astrojs/upgrade to update
+
+19:08:24 [content] Syncing content
+19:08:24 [bluesky-loader] Fetched 100 posts
+19:08:25 [bluesky-loader] Fetched 200 posts
+19:08:26 [bluesky-loader] Fetched 300 posts
+19:08:27 [bluesky-loader] Fetched 362 posts
+19:08:27 [content] Synced content
+19:08:28 [vite] Forced re-optimization of dependencies
+
+ astro  v5.5.4 ready in 6935 ms
+
+┃ Local    http://localhost:3000/
+┃ Network  http://<external-ip>:3000/
+
+19:08:28 watching for file changes...
+```
+
+Вроде не ругнулся, открываю главную страницу... и... снова успех, вроде все открывается, ура!
+Но дальше снова облом, если попытаться перейти по ссылкам или статьям получаю ошибки, так как все ссылки поломанные, получились адреса вида:
+`http://posts/showing-embeds/`, `http://posts/post-options/`, `http://about/` и тд. 😐
+
+Я пытался редачить файлы настроек, менял шаблоны, которые генерят страницы, но их оказалось слишком много. 
+В конце концов я указал `BASE = ""` в `src/config.ts` и о чудо, все сгенерировалось корректно! 
+Хоть это и не совсем правильно, так как пустая строка не является валидным значением для base, 
+о чем прямо говорится в [документации](https://docs.astro.build/en/reference/configuration-reference/?spm=a2ty_o01.29997173.0.0.1b80c921NeE5PG#base):
+> base should be a path like "/blog" or "/". It must start with a forward slash.
+
+В общем Astro ожидает, что base - это корректный URL-путь, начинающийся с "/".
+Но я хотел запустить блог на своем домене и сервере, а не на github pages, поэтому оставляю так. Посмотрим что сломается.
+
+Проверяем снова:
+```bash
+rm -rf node_modules .astro .vite dist
+npm ci
+npm run dev -- --host 0.0.0.0 --port 3000
+```
+
+Теперь все заработало, ссылки открываются корректно! Теперь точно ура! Половина пути пройдена.
+
+## Настройка комментариев
+
+Для начала в репозитории `itway-blog` включил "Discussions":
+Repo → Settings → General → Features → ✅ Discussions.
+
+После этого идем на https://giscus.app/ru для установки `giscus`, в раздел "Репозиторий". Здесь нужно чтобы были выполнены все три условия. 
+И вот тут меня ждал очередной писец. Для установки чего либо в Github необходимо настраивать платежную информацию и указывать страну 
+в разделе "Billing and licensing" -> "Payment information". И после того, как я выбрал Россию и вбил свой адрес, 
+раздел "Billing information" залочился с сообщением:
+
+> Sorry, you can't update your billing information at this time
+> We are sorry, but after reviewing we have determined that the billing information
+> supplied is ineligible for transactions with GitHub due to government restrictions.
+> Learn more about GitHub and trade control regulations.
+
+И все это из-за санкций. И никакие обращения в поддержку не помогают, мой тикет висит открытым уже больше месяца. Поэтому выбирайте другую страну.
+Я же создал новый аккаунт, чисто для блога и указал не Россию.
+
+В общем после установки `giscus` возвращаемся на https://giscus.app/ru.
+
+Здесь:
+  - выбираем в окошке ввода repository: свой репозиторий
+  - в Discussion Category выбираем категорию, я выбрал Announcements
+  - в разделе "Theme" выбираем тему, мне больше понравилась станартная (при выборе любой другой она тут же меняется на этой же странице, 
+  можно посмореть что понравится).
+
+Далее, копирую полученный скрипт:
+```js
+<script src="https://giscus.app/client.js"
+    data-repo="madmasuz/itway-blog"
+    data-repo-id="R_kgDOQIppqA"
+    data-category="Announcements"
+    data-category-id="DIC_kwDOQIppqM4CxB-o"
+    data-mapping="pathname"
+    data-strict="0"
+    data-reactions-enabled="1"
+    data-emit-metadata="0"
+    data-input-position="bottom"
+    data-theme="preferred_color_scheme"
+    data-lang="ru"
+    crossorigin="anonymous"
+    async>
+</script>
+```
+и вставляю его в конец статьи, в которой хочу чтобы были включены комментарии.
+
+Собираю, запускаю:
+
+```bash
+npm ci
+npm run dev -- --host 0.0.0.0 --port 3000
+```
+или сразу
+```bash
+npm run build
+```
+
+При попытке открыть сайт вижу:
+
+> Blocked request. This host ("blog.itway.site") is not allowed.
+> To allow this host, add "blog.itway.site" to `server.allowedHosts` in vite.config.js.
+
+Astro, начиная с v5, теперь не разрешает доступ к dev-серверу с произвольных доменов.
+Лечится просто, надо разрешить хост `blog.itway.site` в конфиге самого Astro. В `astro.config.ts` меняю "defaultConfig" следующим образом:
+```bash
+export default defineConfig({
+  server: {
+    host: true,
+    port: 3000,
+    allowedHosts: ["blog.itway.site"],   // ← разрешаю домен
+  },
+
+  // остальная конфигурация без изменений…
+});
+```
+
+## Отправляем результат на веб сервер
+
+Копипуем сборку в каталог веб сервера:
+```bash
+sudo mkdir -p /var/www/itway-blog
+sudo rsync -a --delete ./dist/ /var/www/itway-blog/
+sudo chown -R www-data:www-data /var/www/itway-blog
+```
+
+В качестве веб сервера я использую nginx, устанавливаем:
+
+```bash
+sudo apt install -y nginx
+```
+
+Создаю конфиг блога:
+
+```bash
+$ sudo vi /etc/nginx/sites-available/itway-blog
+
+server {
+  listen 80 default_server;
+  server_name blog.itway.site;
+
+  root /var/www/itway-blog;
+  index index.html;
+
+  include /etc/nginx/mime.types;
+
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header X-Frame-Options "SAMEORIGIN" always;
+  add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+  # Astro хэш-ассеты
+  location ^~ /_astro/ {
+    try_files $uri =404;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+  }
+
+  # Pagefind
+  location ^~ /pagefind/ {
+    try_files $uri =404;
+    add_header Cache-Control "public, max-age=3600";
+  }
+
+  # Другая статика
+  location ~* \.(?:png|jpe?g|gif|ico|svg|webp|avif|css|js|mjs|json|txt|xml|woff2?)$ {
+    try_files $uri =404;
+    add_header Cache-Control "public, max-age=86400";
+  }
+
+  # SPA fallback
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+
+  gzip on;
+  gzip_comp_level 6;
+  gzip_min_length 256;
+  gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+  gzip_vary on;
+
+  access_log /var/log/nginx/itway-blog.access.log;
+  error_log  /var/log/nginx/itway-blog.error.log warn;
+}
+```
+
+Активирую, проверяю консистентность конфигов и запускаю:
+
+```bash
+sudo ln -sf /etc/nginx/sites-available/itway-blog /etc/nginx/sites-enabled/itway-blog
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Пробую через curl:
+```bash
+curl -I http://blog.itway.site/
+```
+Получаю ответ 200, отлично!
+
+
+## Подключаем SSl сертификат
+
+Должно же быть все по-взрослому, поэтому подключаю SSL от Let's Encrypt:
+
+```
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d blog.itway.site
+```
+
+Во время установки certbot отвечаем на вопросы, указываем свой e-mail для оповещений.
+Ну и как бы усе, сайт теперь должен открываться с SSL!
+
+
+## Да будет автоматизация!
+
+Можно каждый раз самому руками генерить файлы, закидывать их на сервер, перезапускать nginx, но зачем, если у нас есть Gilhub Actions, 
+который сам все может сделать, только ему нужно объяснить как и пусть он занимается этой рутиной.
+Не зря же придумали DevOps 😉.
+
+Добавляем секреты в `GitHub` → `Settings` → `Secrets and variables` → `Actions`:
+
+> `SSH_HOST`        — адрес веб сервера (пример: server.example.com или IP адрес)
+> `SSH_PORT`        — порт SSH (опционально, по умолчанию 22)
+> `SSH_USER`        — пользователь на сервере
+> `SSH_PRIVATE_KEY` — приватный ключ (например, содержимое ~/.ssh/id_rsa)
+> `DEPLOY_PATH`     — путь на сервере, куда выкладывать сайт (например, /var/www/example.com/html)
+
+Обновляю `.github/workflows/deploy.yml`:
+```bash
+name: Build & Deploy (Astro → SSH)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.21
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy via rsync over SSH
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "${SSH_PORT:-22}" "$SSH_HOST" >> ~/.ssh/known_hosts
+          rsync -azr --delete -e "ssh -p ${SSH_PORT:-22}" ./dist/ "$SSH_USER@$SSH_HOST:~/deploy_tmp/"
+          ssh -p "${SSH_PORT:-22}" "$SSH_USER@$SSH_HOST" << 'EOF'
+            sudo rsync -azr --delete ~/deploy_tmp/ /var/www/itway-blog/
+            sudo chown -R www-data:www-data /var/www/itway-blog/
+            sudo nginx -s reload
+            rm -rf ~/deploy_tmp/
+          EOF
+```
+
+Теперь каждый раз при пуше в main, GitHub сам стартует джобу, которая генерит сайт, копирует на веб сервер и говорит nginx перечитать файлы. 
+А освободившееся время можно потратить на что-нибудь более полезное 😊.
+
+## Troubleshoot
+
+Если сайт не открывается, тут может быть тысяча и одна причина.
+
+Как минимум нужно проверять файерволы, на самом сервере (часто провайдеры добавляют дефолтные правила iptables при создании севрера,
+которые по-дефолту блокируют все что явно не разрешено).
+Плюс могут быть настроены фаервол или правила в личном кабинете/панели управления. 
+Тогда либо нужно вносить свои разрешающие правила для нужных портов,
+либо удалять то что мешает, тут однозначного решения нет.
+
+Для диагностики я обычно использую `telnet` и `curl`. Например, 
+```bash
+telnet blog.itway.site 443
+curl -v telnet://blog.itway.site:443
+```
+Успешный результат обеих комманд - провалиться в терминал.
+
+Ну вот и все! Теперь у меня есть собственный крутой и современный блог, сайт, площадка для общения!
+
+Конструктивная критика, советы и комментарии по теме приветствуются.
+
+<script src="https://giscus.app/client.js"
+        data-repo="madmasuz/itway-blog"
+        data-repo-id="R_kgDOQIppqA"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOQIppqM4CxB-o"
+        data-mapping="pathname"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="0"
+        data-input-position="bottom"
+        data-theme="preferred_color_scheme"
+        data-lang="ru"
+        crossorigin="anonymous"
+        async>
+</script>
