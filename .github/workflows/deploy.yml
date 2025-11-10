@@ -40,5 +40,6 @@ jobs:
           ssh -p "${SSH_PORT:-22}" "$SSH_USER@$SSH_HOST" << 'EOF'
             sudo rsync -azr --delete ~/deploy_tmp/ /var/www/itway-blog/
             sudo chown -R www-data:www-data /var/www/itway-blog/
+            sudo nginx -s reload
             rm -rf ~/deploy_tmp/
           EOF
